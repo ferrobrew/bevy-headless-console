@@ -272,6 +272,7 @@ pub(crate) fn parse_raw_commands(
     config: Res<ConsoleConfiguration>,
     mut raw_commands_entered: EventReader<ConsoleCommandRawEntered>,
     mut command_entered: EventWriter<ConsoleCommandEntered>,
+    mut output_console_lines: EventWriter<PrintConsoleLine>,
 ) {
     for raw_command in raw_commands_entered.read() {
         let mut args = Shlex::new(&raw_command.0).collect::<Vec<_>>();
@@ -289,6 +290,10 @@ pub(crate) fn parse_raw_commands(
                     "Command not recognized, recognized commands: `{:?}`",
                     config.commands.keys().collect::<Vec<_>>()
                 );
+
+                output_console_lines.send(PrintConsoleLine::new(
+                    format!("Command not recognized: `{command_name}`").into(),
+                ));
             }
         }
     }
