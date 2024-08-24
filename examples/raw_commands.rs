@@ -1,9 +1,11 @@
 use bevy::prelude::*;
-use bevy_headless_console::{ConsoleCommandEntered, ConsolePlugin, ConsoleSet};
+use bevy_headless_console::{
+    BasicTerminalPlugin, ConsoleCommandEntered, ConsolePlugin, ConsoleSet,
+};
 
 fn main() {
     App::new()
-        .add_plugins((MinimalPlugins, ConsolePlugin))
+        .add_plugins((MinimalPlugins, ConsolePlugin, BasicTerminalPlugin))
         .add_systems(Update, raw_commands.in_set(ConsoleSet::Commands))
         .run();
 }

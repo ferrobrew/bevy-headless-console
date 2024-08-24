@@ -21,6 +21,9 @@ mod commands;
 mod console;
 mod macros;
 
+mod basic_terminal;
+pub use basic_terminal::BasicTerminalPlugin;
+
 /// Console plugin.
 pub struct ConsolePlugin;
 

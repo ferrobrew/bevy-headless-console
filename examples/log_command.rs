@@ -1,10 +1,12 @@
 use bevy::prelude::*;
-use bevy_headless_console::{reply, AddConsoleCommand, ConsoleCommand, ConsolePlugin};
+use bevy_headless_console::{
+    reply, AddConsoleCommand, BasicTerminalPlugin, ConsoleCommand, ConsolePlugin,
+};
 use clap::Parser;
 
 fn main() {
     App::new()
-        .add_plugins((MinimalPlugins, ConsolePlugin))
+        .add_plugins((MinimalPlugins, ConsolePlugin, BasicTerminalPlugin))
         .add_console_command::<LogCommand, _>(log_command)
         .run();
 }
