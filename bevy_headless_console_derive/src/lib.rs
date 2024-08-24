@@ -12,7 +12,7 @@ pub fn derive_clap_command(input: TokenStream) -> TokenStream {
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     TokenStream::from(quote! {
-        impl #impl_generics bevy_console::NamedCommand for #name #ty_generics #where_clause {
+        impl #impl_generics bevy_headless_console::NamedCommand for #name #ty_generics #where_clause {
             fn name() -> &'static str {
                 #name_string
             }

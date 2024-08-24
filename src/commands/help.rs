@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use clap::Parser;
 
-use crate as bevy_console;
+use crate as bevy_headless_console;
 use crate::{reply, ConsoleCommand, ConsoleConfiguration};
 
 /// Prints available arguments and usage

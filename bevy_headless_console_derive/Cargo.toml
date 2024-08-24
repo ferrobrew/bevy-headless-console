@@ -1,11 +1,11 @@
 [package]
-name = "bevy_console_derive"
+name = "bevy_headless_console_derive"
 version = "0.5.0"
 edition = "2021"
 authors = ["Ari Seyhun <ariseyhun@live.com.au>"]
-homepage = "https://github.com/RichoDemus/bevy-console"
-repository = "https://github.com/RichoDemus/bevy-console"
-description = "derive macros for bevy_console"
+homepage = "https://github.com/philpax/bevy-headless-console"
+repository = "https://github.com/philpax/bevy-headless-console"
+description = "derive macros for bevy_headless_console"
 license = "MIT"
 readme = "../README.md"
 

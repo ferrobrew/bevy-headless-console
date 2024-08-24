@@ -1,11 +1,8 @@
-# bevy_console
-[![Check](https://github.com/RichoDemus/bevy-console/actions/workflows/build.yaml/badge.svg)](https://github.com/RichoDemus/bevy-console/actions/workflows/build.yaml)
+# bevy_headless_console
+[![Check](https://github.com/philpax/bevy-headless-console/actions/workflows/build.yaml/badge.svg)](https://github.com/philpax/bevy-headless-console/actions/workflows/build.yaml)
 
-A simple *Half-Life* inspired console with support for argument parsing powered by [`clap`](https://docs.rs/clap/latest/clap/).
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/richodemus/bevy-console/main/doc/screenshot.png" width="100%">
-</p>
+A headless console with support for argument parsing powered by [`clap`](https://docs.rs/clap/latest/clap/), forked from [`bevy_console`](https://github.com/RichoDemus/bevy-console)
+without `egui`, so that the user can wire up their own console interface.
 
 ## Usage
 
@@ -13,16 +10,14 @@ Add `ConsolePlugin` and optionally the resource `ConsoleConfiguration`.
 
 ```rust, ignore
 use bevy::prelude::*;
-use bevy_console::{ConsoleConfiguration, ConsolePlugin};
+use bevy_headless_console::{ConsoleConfiguration, ConsolePlugin};
 
-fn main() {
-    App::new()
-        .add_plugins((DefaultPlugins, ConsolePlugin))
-        .insert_resource(ConsoleConfiguration {
-            // override config here
-            ..Default::default()
-        });
-}
+App::new()
+    .add_plugins((DefaultPlugins, ConsolePlugin))
+    .insert_resource(ConsoleConfiguration {
+        // override config here
+        ..Default::default()
+    });
 ```
 
 Create a console command struct and system and add it to your app with `.add_console_command`.
@@ -32,7 +27,7 @@ Add [doc comments](https://doc.rust-lang.org/rust-by-example/meta/doc.html#doc-c
 
 ```rust, ignore
 use bevy::prelude::*;
-use bevy_console::{reply, AddConsoleCommand, ConsoleCommand, ConsolePlugin};
+use bevy_headless_console::{reply, AddConsoleCommand, ConsoleCommand, ConsolePlugin};
 use clap::Parser;
 
 fn main() {
