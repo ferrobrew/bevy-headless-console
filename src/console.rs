@@ -1,6 +1,8 @@
 use bevy::ecs::{
     component::Tick,
-    system::{Resource, SystemMeta, SystemParam},
+    resource::Resource,
+    schedule::IntoScheduleConfigs,
+    system::{ScheduleSystem, SystemMeta, SystemParam},
     world::unsafe_world_cell::UnsafeWorldCell,
 };
 use bevy::prelude::*;
@@ -12,9 +14,10 @@ use std::mem;
 
 use crate::ConsoleSet;
 
-type ConsoleCommandEnteredReaderSystemParam = EventReader<'static, 'static, ConsoleCommandEntered>;
+type ConsoleCommandEnteredReaderSystemParam =
+    MessageReader<'static, 'static, ConsoleCommandEntered>;
 
-type PrintConsoleLineWriterSystemParam = EventWriter<'static, PrintConsoleLine>;
+type PrintConsoleLineWriterSystemParam = MessageWriter<'static, PrintConsoleLine>;
 
 /// A super-trait for command like structures
 pub trait Command: NamedCommand + CommandFactory + FromArgMatches + Sized + Resource {}
@@ -54,7 +57,7 @@ pub trait NamedCommand {
 /// ```
 pub struct ConsoleCommand<'w, T> {
     command: Option<Result<T, clap::Error>>,
-    console_line: EventWriter<'w, PrintConsoleLine>,
+    console_line: MessageWriter<'w, PrintConsoleLine>,
 }
 
 impl<'w, T> ConsoleCommand<'w, T> {
@@ -68,27 +71,28 @@ impl<'w, T> ConsoleCommand<'w, T> {
 
     /// Print `[ok]` in the console.
     pub fn ok(&mut self) {
-        self.console_line.send(PrintConsoleLine::new("[ok]".into()));
+        self.console_line
+            .write(PrintConsoleLine::new("[ok]".into()));
     }
 
     /// Print `[failed]` in the console.
     pub fn failed(&mut self) {
         self.console_line
-            .send(PrintConsoleLine::new("[failed]".into()));
+            .write(PrintConsoleLine::new("[failed]".into()));
     }
 
     /// Print a reply in the console.
     ///
     /// See [`reply!`](crate::reply) for usage with the [`format!`] syntax.
     pub fn reply(&mut self, msg: impl Into<StyledStr>) {
-        self.console_line.send(PrintConsoleLine::new(msg.into()));
+        self.console_line.write(PrintConsoleLine::new(msg.into()));
     }
 
     /// Print a reply in the console followed by `[ok]`.
     ///
     /// See [`reply_ok!`](crate::reply_ok) for usage with the [`format!`] syntax.
     pub fn reply_ok(&mut self, msg: impl Into<StyledStr>) {
-        self.console_line.send(PrintConsoleLine::new(msg.into()));
+        self.console_line.write(PrintConsoleLine::new(msg.into()));
         self.ok();
     }
 
@@ -96,7 +100,7 @@ impl<'w, T> ConsoleCommand<'w, T> {
     ///
     /// See [`reply_failed!`](crate::reply_failed) for usage with the [`format!`] syntax.
     pub fn reply_failed(&mut self, msg: impl Into<StyledStr>) {
-        self.console_line.send(PrintConsoleLine::new(msg.into()));
+        self.console_line.write(PrintConsoleLine::new(msg.into()));
         self.failed();
     }
 }
@@ -112,14 +116,34 @@ unsafe impl<T: Command> SystemParam for ConsoleCommand<'_, T> {
     type State = ConsoleCommandState<T>;
     type Item<'w, 's> = ConsoleCommand<'w, T>;
 
-    fn init_state(world: &mut World, system_meta: &mut SystemMeta) -> Self::State {
-        let event_reader = ConsoleCommandEnteredReaderSystemParam::init_state(world, system_meta);
-        let console_line = PrintConsoleLineWriterSystemParam::init_state(world, system_meta);
+    fn init_state(world: &mut World) -> Self::State {
+        let event_reader = ConsoleCommandEnteredReaderSystemParam::init_state(world);
+        let console_line = PrintConsoleLineWriterSystemParam::init_state(world);
         ConsoleCommandState {
             event_reader,
             console_line,
             marker: PhantomData,
         }
+    }
+
+    fn init_access(
+        state: &Self::State,
+        system_meta: &mut SystemMeta,
+        component_access_set: &mut bevy::ecs::query::FilteredAccessSet,
+        world: &mut World,
+    ) {
+        ConsoleCommandEnteredReaderSystemParam::init_access(
+            &state.event_reader,
+            system_meta,
+            component_access_set,
+            world,
+        );
+        PrintConsoleLineWriterSystemParam::init_access(
+            &state.console_line,
+            system_meta,
+            component_access_set,
+            world,
+        );
     }
 
     #[inline]
@@ -148,17 +172,12 @@ unsafe impl<T: Command> SystemParam for ConsoleCommand<'_, T> {
                 // .color(clap::ColorChoice::Always);
                 let arg_matches = clap_command.try_get_matches_from(command.args.iter());
 
-                debug!(
-                    "Trying to parse as `{}`. Result: {arg_matches:?}",
-                    command.command_name
-                );
-
                 match arg_matches {
                     Ok(matches) => {
                         return Some(T::from_arg_matches(&matches));
                     }
                     Err(err) => {
-                        console_line.send(PrintConsoleLine::new(err.render()));
+                        console_line.write(PrintConsoleLine::new(err.render()));
                         return Some(Err(err));
                     }
                 }
@@ -173,11 +192,11 @@ unsafe impl<T: Command> SystemParam for ConsoleCommand<'_, T> {
     }
 }
 /// Raw console command entered; will be parsed into `ConsoleCommandEntered`.
-#[derive(Clone, Debug, Event)]
+#[derive(Clone, Debug, Message)]
 pub struct ConsoleCommandRawEntered(pub String);
 
 /// Parsed raw console command into `command` and `args`.
-#[derive(Clone, Debug, Event)]
+#[derive(Clone, Debug, Message)]
 pub struct ConsoleCommandEntered {
     /// the command definition
     pub command_name: String,
@@ -185,8 +204,8 @@ pub struct ConsoleCommandEntered {
     pub args: Vec<String>,
 }
 
-/// Events to print to the console.
-#[derive(Clone, Debug, Eq, Event, PartialEq)]
+/// Messages to print to the console.
+#[derive(Clone, Debug, Eq, Message, PartialEq)]
 pub struct PrintConsoleLine {
     /// Console line
     pub line: StyledStr,
@@ -239,24 +258,24 @@ pub trait AddConsoleCommand {
     /// #
     /// # fn log_command(mut log: ConsoleCommand<LogCommand>) {}
     /// ```
-    fn add_console_command<T: Command, Params>(
+    fn add_console_command<T: Command, M>(
         &mut self,
-        system: impl IntoSystemConfigs<Params>,
+        system: impl IntoScheduleConfigs<ScheduleSystem, M>,
     ) -> &mut Self;
 }
 
 impl AddConsoleCommand for App {
-    fn add_console_command<T: Command, Params>(
+    fn add_console_command<T: Command, M>(
         &mut self,
-        system: impl IntoSystemConfigs<Params>,
+        system: impl IntoScheduleConfigs<ScheduleSystem, M>,
     ) -> &mut Self {
         let sys = move |mut config: ResMut<ConsoleConfiguration>| {
             let command = T::command().no_binary_name(true);
             // .color(clap::ColorChoice::Always);
             let name = T::name();
             if config.commands.contains_key(name) {
-                warn!(
-                    "console command '{}' already registered and was overwritten",
+                eprintln!(
+                    "warning: console command '{}' already registered and was overwritten",
                     name
                 );
             }
@@ -270,28 +289,22 @@ impl AddConsoleCommand for App {
 
 pub(crate) fn parse_raw_commands(
     config: Res<ConsoleConfiguration>,
-    mut raw_commands_entered: EventReader<ConsoleCommandRawEntered>,
-    mut command_entered: EventWriter<ConsoleCommandEntered>,
-    mut output_console_lines: EventWriter<PrintConsoleLine>,
+    mut raw_commands_entered: MessageReader<ConsoleCommandRawEntered>,
+    mut command_entered: MessageWriter<ConsoleCommandEntered>,
+    mut output_console_lines: MessageWriter<PrintConsoleLine>,
 ) {
     for raw_command in raw_commands_entered.read() {
         let mut args = Shlex::new(&raw_command.0).collect::<Vec<_>>();
 
         if !args.is_empty() {
             let command_name = args.remove(0);
-            debug!("Command entered: `{command_name}`, with args: `{args:?}`");
 
             let command = config.commands.get(command_name.as_str());
 
             if command.is_some() {
-                command_entered.send(ConsoleCommandEntered { command_name, args });
+                command_entered.write(ConsoleCommandEntered { command_name, args });
             } else {
-                debug!(
-                    "Command not recognized, recognized commands: `{:?}`",
-                    config.commands.keys().collect::<Vec<_>>()
-                );
-
-                output_console_lines.send(PrintConsoleLine::new(
+                output_console_lines.write(PrintConsoleLine::new(
                     format!("Command not recognized: `{command_name}`").into(),
                 ));
             }

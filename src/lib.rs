@@ -44,16 +44,16 @@ pub enum ConsoleSet {
 }
 
 /// Run condition which does not run any command systems if no command was entered
-fn have_commands(commands: EventReader<ConsoleCommandEntered>) -> bool {
+fn have_commands(commands: MessageReader<ConsoleCommandEntered>) -> bool {
     !commands.is_empty()
 }
 
 impl Plugin for ConsolePlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<ConsoleConfiguration>()
-            .add_event::<ConsoleCommandRawEntered>()
-            .add_event::<ConsoleCommandEntered>()
-            .add_event::<PrintConsoleLine>()
+            .add_message::<ConsoleCommandRawEntered>()
+            .add_message::<ConsoleCommandEntered>()
+            .add_message::<PrintConsoleLine>()
             .add_console_command::<ExitCommand, _>(exit_command)
             .add_console_command::<HelpCommand, _>(help_command)
             .add_systems(Update, parse_raw_commands.in_set(ConsoleSet::ConsoleInput))

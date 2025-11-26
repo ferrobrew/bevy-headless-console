@@ -37,14 +37,14 @@ struct StdinLineReceiver(mpsc::Receiver<String>);
 
 fn convert_stdin_to_events(
     receiver: NonSend<StdinLineReceiver>,
-    mut command_raw_entered: EventWriter<ConsoleCommandRawEntered>,
+    mut command_raw_entered: MessageWriter<ConsoleCommandRawEntered>,
 ) {
     for line in receiver.0.try_iter() {
-        command_raw_entered.send(ConsoleCommandRawEntered(line));
+        command_raw_entered.write(ConsoleCommandRawEntered(line));
     }
 }
 
-fn output_console_lines(mut reader: EventReader<PrintConsoleLine>) {
+fn output_console_lines(mut reader: MessageReader<PrintConsoleLine>) {
     let mut handled = false;
     for line in reader.read() {
         println!("{}", line.line);

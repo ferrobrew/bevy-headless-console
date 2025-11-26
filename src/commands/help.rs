@@ -27,7 +27,6 @@ pub(crate) fn help_command(
             }
         },
         Some(Ok(HelpCommand { command: None })) => {
-            debug!("No command received in help");
             reply!(help, "Available commands:");
             let longest_command_name = config
                 .commands
